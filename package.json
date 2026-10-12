@@ -7,9 +7,14 @@
   ],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build -w @auditoo/web",
+    "start": "npm run start -w @auditoo/api"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.6"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

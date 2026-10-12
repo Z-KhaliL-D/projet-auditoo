@@ -55,6 +55,14 @@ Offline-first, mobile-first PWA for housing inspectors to describe a building's 
 - API and shared schema changes stay backward compatible with the previous client version.
 - Test the service worker with a production build, not in dev.
 
+## Deploy
+
+- One Railway service built from the `Dockerfile`: the Hono server serves the built web app and the API on one URL.
+- SQLite lives on a Railway volume mounted at `/data`, with `DB_PATH=/data/auditoo.db`. In production the server refuses to start without a valid `DB_PATH`.
+- Cache rules: `sw.js`, `index.html`, the manifest and icons are `no-cache`, `/assets/*` is immutable, `/api/*` is `no-store`.
+- There is no authentication, so the deployed site holds demo data only.
+- Any SQLite schema change needs a migration, because the volume persists data.
+
 ## Mobile UX
 
 - Design for phones first (Chrome on Android and iOS).

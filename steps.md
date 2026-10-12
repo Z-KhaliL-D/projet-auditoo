@@ -6,6 +6,11 @@ Log of each step: what was built, how it was verified, and the commit.
 
 - No screen to inspect or retry rejected ops. The badge shows an error with the count, and the ops stay in the `rejected` table. Ops that depended on a rejected one reach the server as no-ops, so that data stays on this device only.
 - A remote delete can remove a level while another device has its add input open, and the typed text is dropped.
+- No authentication. Anyone with the deployed URL can read and change every record, so the deployed site holds demo data only. To cover in design.md.
+- Restoring a server backup older than a client's last sync loses those changes for good: clients remove an op from their outbox once the server acknowledges it, and never re-send it.
+- The SQLite schema is created with `CREATE TABLE IF NOT EXISTS`. Once the volume persists data, any schema change needs a real migration.
+- One instance only (a volume allows no replicas), and each deploy has a short downtime. Offline clients retry, so users do not notice.
+- No Content-Security-Policy header yet.
 
 ## Step 1: Monorepo scaffold
 
@@ -210,3 +215,20 @@ Log of each step: what was built, how it was verified, and the commit.
   - Serve `sw.js`, `index.html` and `manifest.webmanifest` with `Cache-Control: no-cache`, and `/assets/*` as long-lived immutable files. Otherwise a new version never reaches the inspectors.
   - Do not cache `/api` in any proxy or CDN. The API already sends `no-store`.
   - Keep API changes backward compatible with the previous client version.
+
+## Step 10: Deploy on Railway
+
+- Commit: `feat: deploy as one Railway service with a persistent SQLite volume`
+- Built:
+  - One service: the Hono server serves the built web app and the API on the same URL (no CORS). `apps/api/src/web.ts` holds the static serving, `config.ts` the production checks.
+  - The deploy notes from step 9 are applied: `sw.js`, `index.html`, the manifest and icons are `no-cache` with an ETag (a conditional request gets a 304); `/assets/*` is immutable for a year; errors are `no-store`; `/api/*` is `no-store`. Client routes get the app shell, but a missing file or an unknown `/api` path is a 404, never HTML. Responses are gzip-compressed.
+  - Production refuses to start unless `DB_PATH` is set and its folder exists and is writable, and unless the web build exists. `/data` is not created in the image. `/api/health` checks the database (503 if it fails). SIGTERM closes the database cleanly.
+  - `Dockerfile` (Node 22), `.dockerignore`, and `railway.json` (Dockerfile builder, healthcheck on `/api/health`, restart on failure, 10 s draining). Root scripts `build` and `start`.
+  - `shadcn` moved to devDependencies, `tsx` to the API's dependencies, `concurrently` bumped to 10.0.6.
+- Verified:
+  - 29 shared, 59 API and 223 web tests pass. New API tests cover the cache headers, ETag and 304, compression, routing and the shell fallback, path traversal, the 404 rules, the health check, and every production configuration check.
+  - `npm audit --omit=dev` reports 0 vulnerabilities (before the move: 7 high, through `shadcn`).
+  - The image builds for `linux/amd64`, the platform Railway runs. The first build failed because npm tried to compile `better-sqlite3`; fixed with `--ignore-scripts` plus a load check.
+  - Run locally with a Docker volume: headers as designed on every file type; a 304 on a matching ETag; gzip (32 KB to 10 KB for `sw.js`); path traversal returns the shell, never file contents; data written through the API survives `docker restart` and survives destroying the container and starting a new one on the same volume; replaying an op is skipped; the database file sits on the volume; the server exits with a clear error and code 1 with no `DB_PATH`, with no volume, and with no web build; `docker stop` logs the SIGTERM and exits 0.
+  - Real browser against the container: the service worker takes control, the app opens and reloads offline, `/api` is in no cache and fails offline, a new `sw.js` is detected through `no-cache` plus ETag and waits for the user, Reload switches versions and reloads every tab, and Chrome reports no installability errors.
+  - Not done: the actual Railway deploy and a check of the public URL.
