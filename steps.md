@@ -2,6 +2,11 @@
 
 Log of each step: what was built, how it was verified, and the commit.
 
+## Known limits (deferred by choice)
+
+- No screen to inspect or retry rejected ops. The badge shows an error with the count, and the ops stay in the `rejected` table. Ops that depended on a rejected one reach the server as no-ops, so that data stays on this device only.
+- A remote delete can remove a level while another device has its add input open, and the typed text is dropped.
+
 ## Step 1: Monorepo scaffold
 
 - Commit: `chore: scaffold monorepo with web, api and shared workspaces`
@@ -108,3 +113,19 @@ Log of each step: what was built, how it was verified, and the commit.
   - A remote delete can remove a level while another device has its add input open, dropping the typed text.
 - For the deploy step:
   - If the server database is reset or lost, ops already pushed are not re-sent and the server cannot recover them. The SQLite file must live on a persistent volume.
+
+## Step 7a: Reorder spaces inside a level
+
+- Commit: `feat(web): drag to reorder spaces inside a level`
+- Built:
+  - One `DndContext` on the main screen with a sortable list per level, ready for levels (7b) and cross-level moves (7c).
+  - `DragHandle`: 44px grip with `touch-action: none` and no text selection. It is the only element with drag listeners, so the row body scrolls normally and stays free for swipe-to-delete.
+  - Instant drag after 4px, keyboard sensor for accessibility, `DragOverlay` preview with the source row dimmed.
+  - `drop.ts`: pure `resolveSpaceDrop`, `applyMove` and `reflects`. A drop that changes nothing writes no op.
+  - `useOptimisticMove`: shows the dropped order until Dexie reflects it, then hands over, so rows do not snap back.
+  - Drops call the existing `moveSpace`, which computes the rank.
+  - New dependencies: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`.
+- Verified:
+  - 125 Vitest tests pass in `apps/web`, including the drop logic, the optimistic hook and handle rendering.
+  - `tsc --noEmit` and `vite build` pass.
+  - Not yet checked by hand on a phone: drag feel, scrolling, edge auto-scroll.

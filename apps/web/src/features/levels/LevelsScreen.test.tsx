@@ -155,4 +155,21 @@ describe("LevelsScreen", () => {
     expect(await screen.findByText("Ground")).toBeTruthy();
     expect(screen.queryByText("Kitchen")).toBeNull();
   });
+
+  it("gives every space a 44px drag handle and keeps the row body free of drag listeners", async () => {
+    const user = userEvent.setup();
+    render(<LevelsScreen />);
+    await addLevel(user, "Ground");
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: /add space/i }));
+    await user.type(screen.getByLabelText("New space in Ground"), "Kitchen{Enter}{Escape}");
+    const name = await screen.findByText("Kitchen", { selector: "li span" });
+
+    const handle = screen.getByRole("button", { name: "Reorder Kitchen" });
+    expect(handle.className).toContain("size-11");
+    expect(handle.className).toContain("touch-none");
+    expect(handle.closest("li")).toBe(name.closest("li"));
+    expect(name.getAttribute("role")).toBeNull();
+    expect(name.getAttribute("tabindex")).toBeNull();
+  });
 });

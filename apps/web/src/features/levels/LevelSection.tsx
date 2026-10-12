@@ -1,3 +1,4 @@
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -59,11 +60,13 @@ export function LevelSection({ level, collapsed, onToggle }: Props) {
           {count === 0 && !adding && (
             <p className="border-t px-4 py-3 text-sm text-muted-foreground">No spaces yet</p>
           )}
-          <ul>
-            {level.spaces.map((space) => (
-              <SpaceRow key={space.id} space={space} />
-            ))}
-          </ul>
+          <SortableContext items={level.spaces.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <ul>
+              {level.spaces.map((space) => (
+                <SpaceRow key={space.id} space={space} />
+              ))}
+            </ul>
+          </SortableContext>
           <div className="border-t">
             {adding ? (
               <div className="px-3 py-1">
