@@ -48,6 +48,13 @@ Offline-first, mobile-first PWA for housing inspectors to describe a building's 
 - Do not use the Background Sync API (unsupported on iOS Safari).
 - UI status: offline, syncing, synced, pending count, error.
 
+## PWA
+
+- The service worker precaches the app shell and never touches `/api`: no caching of any API request or response, for any method.
+- A new version never takes over by itself. The user chooses when to reload.
+- API and shared schema changes stay backward compatible with the previous client version.
+- Test the service worker with a production build, not in dev.
+
 ## Mobile UX
 
 - Design for phones first (Chrome on Android and iOS).

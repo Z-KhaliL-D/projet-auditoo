@@ -184,3 +184,29 @@ Log of each step: what was built, how it was verified, and the commit.
   - 189 Vitest tests pass in `apps/web`: the gesture state machine (axis lock, offset clamping, thresholds, flick, stale flick, level rule), and component tests with synthetic pointer events for delete plus undo, short swipe, vertical move, browser cancel, secondary mouse button, handle and menu outside the swipe area, no swipe while renaming, and level swipe including click suppression.
   - `tsc --noEmit` and `vite build` pass.
   - Not yet checked by hand on a phone: how the swipe feels against real scrolling, accidental horizontal flicks while scrolling, and the exit animation.
+
+## Step 9: Offline PWA
+
+- Commit: `feat(web): installable offline PWA with serwist`
+- Built:
+  - `src/sw.ts` with `@serwist/vite` (works on Vite 8). Precaches every emitted file (HTML, JS, CSS, Latin and Latin-extended fonts, icons, manifest; about 850 KiB), serves the cached `index.html` for navigations, and routes `/api` to the network only, for every method. Cyrillic and Vietnamese fonts are not precached.
+  - `/api` is never cached at four layers: the service worker rule, `Cache-Control: no-store` on every API response, `cache: "no-store"` on every sync request, and no other runtime caching.
+  - Updates: a new version waits and a persistent toast asks the inspector to reload. If ignored, it prompts again at the next start. When it takes over, every open tab reloads. A long-open app checks for updates when the page becomes visible, at most every 15 minutes.
+  - Manifest (`standalone`, icons including maskable), light and dark `theme-color`, iOS tags, and placeholder icons (SVG sources and PNGs).
+  - iOS Safari install banner (Share, then Add to Home Screen), dismissible, hidden for 3 days after a dismissal. Persistent storage is requested at startup.
+  - Production only. Registered after load, off in dev. `npm run build -w apps/web` then `npm run preview -w apps/web` to try it.
+- Verified:
+  - 223 web tests, 29 API tests and 29 shared tests pass. They cover the update logic, the throttled update check, the iOS detection and banner, the storage request, `no-store`, and a build test that checks what the service worker precaches and that `/api` is network only.
+  - Real browser check (Chromium, a scratch server running the real API on an in-memory database, outside the repo): the service worker takes control on the first visit; the app opens and reloads with no network, also in a new tab; an edit made offline survives an offline reload and reaches the server when back online; `/api` requests all reach the network and nothing under `/api` is in any cache; `/api` offline fails instead of answering from a cache; a new version waits and prompts without reloading anything; reloading without choosing prompts again; tapping Reload switches versions and reloads every open tab; Chrome reports no installability or manifest errors in a normal profile; the iOS nudge shows only for iOS Safari and stays hidden after a dismissal.
+  - Not checked on real devices: installing on Android and iOS, the iOS status bar style (`default`), the home screen icon, and standalone launch.
+- Known limits:
+  - The first visit must be online, because that is when the shell is cached.
+  - Android's launch splash comes from the manifest only, so dark-mode users see a brief white splash.
+  - iOS can clear the cache of a rarely used app, and Safari erases IndexedDB after about a week unless installed (hence the banner). iOS installs are manual.
+  - The icon is a placeholder until there is branding.
+  - `npm audit` reports a high severity advisory in `braces`, reached through the `shadcn` package; it was not introduced by Serwist.
+- For the deploy step:
+  - Serve over HTTPS (service workers require it).
+  - Serve `sw.js`, `index.html` and `manifest.webmanifest` with `Cache-Control: no-cache`, and `/assets/*` as long-lived immutable files. Otherwise a new version never reaches the inspectors.
+  - Do not cache `/api` in any proxy or CDN. The API already sends `no-store`.
+  - Keep API changes backward compatible with the previous client version.

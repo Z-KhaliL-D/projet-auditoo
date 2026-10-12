@@ -19,6 +19,8 @@ afterEach(() => {
 async function addLevel(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(screen.getByRole("button", { name: /add level/i }));
   await user.type(screen.getByLabelText("New level"), `${name}{Enter}`);
+  // The level is written to Dexie and read back asynchronously.
+  await screen.findByText(name, { selector: "section span" });
 }
 
 async function chooseAction(user: ReturnType<typeof userEvent.setup>, row: string, action: RegExp) {

@@ -23,6 +23,17 @@ describe("httpTransport", () => {
     expect((fetchFn.mock.calls[0] as unknown[])[0]).toBe("/api/sync/pull?since=3");
   });
 
+  it("bypasses the HTTP cache on every request", async () => {
+    const fetchFn = vi.fn(async () => json({ levels: [], spaces: [], cursor: 0 }));
+    const transport = httpTransport(fetchFn as unknown as typeof fetch);
+    await transport.pull(0);
+    fetchFn.mockImplementation(async () => json({ applied: [], skipped: [] }));
+    await transport.push([]);
+    for (const call of fetchFn.mock.calls as unknown as [string, RequestInit][]) {
+      expect(call[1].cache).toBe("no-store");
+    }
+  });
+
   it("treats a thrown fetch as offline", async () => {
     const t = httpTransport((async () => Promise.reject(new TypeError("Failed to fetch"))) as typeof fetch);
     await expect(t.pull(0)).rejects.toBeInstanceOf(OfflineError);

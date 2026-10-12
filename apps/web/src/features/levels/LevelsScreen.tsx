@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { db } from "@/data/db";
 import { createLevel } from "@/data/levels";
+import { InstallNudge } from "@/pwa/InstallNudge";
 import { SyncBadge } from "@/sync/SyncBadge";
 import { collideForKind } from "./collision";
 import { DragPreview } from "./DragHandle";
@@ -105,6 +106,7 @@ export function LevelsScreen() {
         }}
       >
         <main ref={mainRef} className="flex-1 space-y-3 px-3 pt-3 pb-28">
+          <InstallNudge />
           {levels === undefined ? null : levels.length === 0 && !adding ? (
             <div className="px-4 py-16 text-center">
               <p className="text-base font-medium">No levels yet</p>

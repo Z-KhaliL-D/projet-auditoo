@@ -38,7 +38,8 @@ export function httpTransport(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetchFn(url, { ...init, signal: controller.signal });
+      // no-store: the HTTP cache must never answer a sync request.
+      const res = await fetchFn(url, { ...init, cache: "no-store", signal: controller.signal });
       if (!res.ok) throw new ServerError(res.status, `HTTP ${res.status}`);
       const parsed = schema.safeParse(await res.json());
       if (!parsed.success) throw new ServerError(res.status, "malformed response");
