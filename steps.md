@@ -170,3 +170,17 @@ Log of each step: what was built, how it was verified, and the commit.
   - 162 Vitest tests pass in `apps/web`: ghost derivation, the ghost row in a level, the scroll and padding math, and the anchor hook against stubbed geometry (jsdom has no layout).
   - `tsc --noEmit` and `vite build` pass.
   - Not yet checked by hand on a phone: how the fold feels at the start of a level drag, and the gap position when crossing levels. When the carried level is near the top of a short list the page cannot scroll further up, so it can still end up a little above the finger.
+
+## Step 8: Swipe to delete
+
+- Commit: `feat(web): swipe to delete spaces and levels`
+- Built:
+  - Swiping the name area of a space or the header of a level to the left deletes it with the existing undo toast. Custom pointer events with `touch-action: pan-y`, so vertical scrolling stays with the browser.
+  - `swipe.ts`: a pure state machine. A swipe starts only on a clearly horizontal move to the left (10px, 1.5 times more horizontal than vertical); anything else is left to scrolling.
+  - Thresholds: a space deletes past 40 percent of its width or on a fast flick (at least 15 percent travel); a level needs 60 percent and has no flick shortcut. A red background with a trash icon is revealed, and the icon grows once releasing would delete.
+  - `useSwipeToDelete`: slides the row content, springs back on a short swipe or a browser cancel, slides off for 150 ms before the delete runs (no slide for reduced motion), and suppresses the click that follows a swipe so a level does not also collapse.
+  - The drag handle and the menu button sit outside the swipe area. Swipes are off while renaming and while a drag is active.
+- Verified:
+  - 189 Vitest tests pass in `apps/web`: the gesture state machine (axis lock, offset clamping, thresholds, flick, stale flick, level rule), and component tests with synthetic pointer events for delete plus undo, short swipe, vertical move, browser cancel, secondary mouse button, handle and menu outside the swipe area, no swipe while renaming, and level swipe including click suppression.
+  - `tsc --noEmit` and `vite build` pass.
+  - Not yet checked by hand on a phone: how the swipe feels against real scrolling, accidental horizontal flicks while scrolling, and the exit animation.
