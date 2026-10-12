@@ -68,3 +68,20 @@ Log of each step: what was built, how it was verified, and the commit.
   - Shared 29, API 27, web 36 Vitest tests pass.
   - `tsc --noEmit` passes in all three.
   - Same-batch case covered: a space deleted before its level in the same push stays deleted after the level restore.
+
+## Step 5b: Main screen
+
+- Commit: `feat(web): levels and spaces screen`
+- Built:
+  - `/` shows levels as collapsible sections with their spaces, read only through `useLiveQuery` (`useLevelTree`).
+  - Inline add for spaces (stays open after Enter) and levels (fixed bottom button), in-place rename, row menu with Rename and Delete, delete with a 6 second Undo toast.
+  - Empty states for no levels and for an empty level. Teal accent, neutral palette, dark mode follows the system.
+  - 44px tap targets, safe-area insets, reserved empty slots for the header sync badge and the row drag handle.
+  - New dependencies: `dexie-react-hooks`, `sonner` (via shadcn), shadcn `dropdown-menu` and `input`. Dev-only: `jsdom`, `@testing-library/react`, `@testing-library/user-event`.
+- Verified:
+  - 45 Vitest tests pass in `apps/web`, 9 of them component tests for add, rename, delete, undo and collapse.
+  - `tsc --noEmit` and `vite build` pass.
+  - Not yet checked by eye in a browser or on a phone.
+- Bugs caught while testing:
+  - Characters typed right after Enter while adding were wiped by a late state reset. The field now clears before the write starts.
+  - Undo on a space toast would do nothing after its level was deleted, so those toasts are dismissed when the level is deleted.

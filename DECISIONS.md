@@ -27,3 +27,4 @@
 - 2026-10-10: Undo toasts use `sonner`, and the UI adds `dexie-react-hooks`. Reason: sonner is the shadcn toast, and `useLiveQuery` needs the hooks package.
 - 2026-10-10: Teal accent, dark mode follows the system with no toggle. Reason: calm, readable in both themes, and less header clutter.
 - 2026-10-10: A few component tests cover add, rename, delete and undo, using Testing Library and jsdom (dev-only). Reason: guards the core flows without testing styling.
+- 2026-10-10: The generated shadcn `sonner` wrapper no longer uses `next-themes`; it passes `theme="system"`. Reason: dark mode already follows the system through the `.dark` class, so the extra dependency is unnecessary.

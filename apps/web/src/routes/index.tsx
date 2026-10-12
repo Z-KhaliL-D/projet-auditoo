@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { LevelsScreen } from "@/features/levels/LevelsScreen";
 
 export const Route = createFileRoute("/")({
-  component: () => <h1 className="p-4 text-2xl font-semibold">Auditoo</h1>,
+  component: LevelsScreen,
 });
