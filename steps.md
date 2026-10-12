@@ -4,7 +4,7 @@ Log of each step: what was built, how it was verified, and the commit.
 
 ## Step 1: Monorepo scaffold
 
-- Commit: `ab3f89e chore: scaffold monorepo with web, api and shared workspaces`
+- Commit: `chore: scaffold monorepo with web, api and shared workspaces`
 - Built:
   - Root npm workspaces, `.gitignore`, scripts `dev` (concurrently) and `test`.
   - `apps/web`: Vite, React 19, strict TypeScript, TanStack Router (file-based), Tailwind v4, shadcn (base-nova). Route `/` shows "Auditoo".
@@ -20,7 +20,7 @@ Log of each step: what was built, how it was verified, and the commit.
 
 ## Step 2: Shared zod schemas
 
-- Commit: `1eede15 feat(shared): zod schemas for data model and sync ops`
+- Commit: `feat(shared): zod schemas for data model and sync ops`
 - Built:
   - `Level`, `Space`, `Op` (discriminated union with nested `payload`), `PushRequest`, `PushResponse`, `PullResponse`, `cursorSchema`.
   - `compareByRank` sorts by rank then id with plain `<`.
@@ -31,7 +31,7 @@ Log of each step: what was built, how it was verified, and the commit.
 
 ## Step 3: Backend sync API
 
-- Commit: `c26e334 feat(api): sync push and pull endpoints with sqlite`
+- Commit: `feat(api): sync push and pull endpoints with sqlite`
 - Built:
   - SQLite tables `levels`, `spaces`, `processed_ops`, `meta` (global `seq` counter).
   - `POST /api/sync/push`: ordered ops in one transaction, skips processed opIds, 400 on an invalid body.
@@ -45,7 +45,7 @@ Log of each step: what was built, how it was verified, and the commit.
 
 ## Step 4: Local data layer (apps/web)
 
-- Commit: `4844396 feat(web): dexie local data layer with outbox mutations`
+- Commit: `feat(web): dexie local data layer with outbox mutations`
 - Built:
   - Dexie `AuditooDb` with `levels`, `spaces`, `outbox` (auto-increment key, `opId` indexed) and `meta` (pull cursor via `getCursor` and `setCursor`).
   - Mutations for all 8 op types in `data/levels.ts` and `data/spaces.ts`. Each one updates the local table and appends the op in one Dexie transaction.

@@ -72,5 +72,7 @@ I own the architecture and design decisions. You implement.
 - Write Vitest tests for sync logic and API endpoints.
 - Keep files small and focused. No dead code.
 - Never commit until I say so.
+- Never amend commits. Fix mistakes with a new commit.
+- Do not write commit hashes in `steps.md` or any other doc. Git history is the record.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`). No co-author lines.
 - Never use em dashes in code comments or docs.
