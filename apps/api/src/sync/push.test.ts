@@ -150,6 +150,72 @@ describe("POST /api/sync/push", () => {
     });
   });
 
+  describe("restore (undo)", () => {
+    it("restores a deleted space", async () => {
+      const { push, pull } = setup();
+      const [l, s] = [uuid(), uuid()];
+      await push([ops.levelCreate(l), ops.spaceCreate(s, l), ops.spaceDelete(s)]);
+      const { cursor } = await pull();
+
+      await push([ops.spaceRestore(s)]);
+
+      expect((await pull(cursor)).spaces).toMatchObject([{ id: s, deletedAt: null }]);
+    });
+
+    it("restores a level with the spaces its delete cascaded to, not earlier deletes", async () => {
+      const { push, pull } = setup();
+      const [l, kept, gone] = [uuid(), uuid(), uuid()];
+      // All in one batch, so a shared timestamp would wrongly bring `gone` back.
+      await push([
+        ops.levelCreate(l),
+        ops.spaceCreate(kept, l),
+        ops.spaceCreate(gone, l, "Gone", "a1"),
+        ops.spaceDelete(gone),
+        ops.levelDelete(l),
+        ops.levelRestore(l),
+      ]);
+
+      const data = await pull();
+      expect(data.levels[0].deletedAt).toBeNull();
+      expect(data.spaces.find((s) => s.id === kept)?.deletedAt).toBeNull();
+      expect(data.spaces.find((s) => s.id === gone)?.deletedAt).not.toBeNull();
+    });
+
+    it("bumps seq on every restored row so other devices receive them", async () => {
+      const { push, pull } = setup();
+      const [l, s] = [uuid(), uuid()];
+      await push([ops.levelCreate(l), ops.spaceCreate(s, l), ops.levelDelete(l)]);
+      const { cursor } = await pull();
+
+      await push([ops.levelRestore(l)]);
+
+      const changes = await pull(cursor);
+      expect(changes.levels).toMatchObject([{ id: l, deletedAt: null }]);
+      expect(changes.spaces).toMatchObject([{ id: s, deletedAt: null }]);
+    });
+
+    it("does not restore a space under a deleted level", async () => {
+      const { push, pull } = setup();
+      const [l, s] = [uuid(), uuid()];
+      await push([ops.levelCreate(l), ops.spaceCreate(s, l), ops.spaceDelete(s), ops.levelDelete(l)]);
+      await push([ops.spaceRestore(s)]);
+      expect((await pull()).spaces[0].deletedAt).not.toBeNull();
+    });
+
+    it("treats restore of a live or unknown target as an applied no-op", async () => {
+      const { push, pull } = setup();
+      const [l, s] = [uuid(), uuid()];
+      await push([ops.levelCreate(l), ops.spaceCreate(s, l)]);
+      const before = await pull();
+
+      const noops = [ops.levelRestore(l), ops.spaceRestore(s), ops.levelRestore(uuid()), ops.spaceRestore(uuid())];
+      const res = await push(noops);
+
+      expect(await res.json()).toEqual({ applied: noops.map((o) => o.opId), skipped: [] });
+      expect(await pull()).toEqual(before);
+    });
+  });
+
   describe("invalid requests", () => {
     it("returns 400 and applies nothing when one op is invalid", async () => {
       const { push, pull } = setup();

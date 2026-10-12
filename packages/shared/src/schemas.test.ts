@@ -61,10 +61,12 @@ describe("opSchema", () => {
     { type: "level.rename", payload: { id: id(), name: "L" } },
     { type: "level.move", payload: { id: id(), rank: "a1" } },
     { type: "level.delete", payload: { id: id() } },
+    { type: "level.restore", payload: { id: id() } },
     { type: "space.create", payload: { id: id(), levelId: id(), name: "S", rank: "a0" } },
     { type: "space.rename", payload: { id: id(), name: "S" } },
     { type: "space.move", payload: { id: id(), levelId: id(), rank: "a1" } },
     { type: "space.delete", payload: { id: id() } },
+    { type: "space.restore", payload: { id: id() } },
   ];
 
   it.each(valid)("accepts $type", (op) => {

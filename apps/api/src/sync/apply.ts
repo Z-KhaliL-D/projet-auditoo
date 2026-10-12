@@ -25,6 +25,7 @@ function update(db: Db, table: Table, id: string, now: number, columns: Columns)
 
 // Deletes win over edits: an edit on a missing or deleted target is a no-op.
 // New data wins over deletes: space.create restores a deleted parent level.
+// Restores are undo: they never bring back a space under a deleted level.
 export function applyOp(db: Db, op: Op, now: number): void {
   switch (op.type) {
     case "level.create": {
@@ -55,6 +56,20 @@ export function applyOp(db: Db, op: Op, now: number): void {
       for (const space of spaces) update(db, "spaces", space.id, now, { deleted_at: now });
       return;
     }
+    case "level.restore": {
+      const { id } = op.payload;
+      const row = db.prepare("SELECT deleted_at FROM levels WHERE id = ?").get(id) as
+        | { deleted_at: number | null }
+        | undefined;
+      if (!row || row.deleted_at === null) return;
+      update(db, "levels", id, now, { deleted_at: null });
+      // Only the spaces deleted by the same cascade come back.
+      const spaces = db
+        .prepare("SELECT id FROM spaces WHERE level_id = ? AND deleted_at = ?")
+        .all(id, row.deleted_at) as { id: string }[];
+      for (const space of spaces) update(db, "spaces", space.id, now, { deleted_at: null });
+      return;
+    }
     case "space.create": {
       const { id, levelId, name, rank } = op.payload;
       if (exists(db, "spaces", id) || !exists(db, "levels", levelId)) return;
@@ -79,6 +94,15 @@ export function applyOp(db: Db, op: Op, now: number): void {
     case "space.delete": {
       const { id } = op.payload;
       if (isLive(db, "spaces", id)) update(db, "spaces", id, now, { deleted_at: now });
+      return;
+    }
+    case "space.restore": {
+      const { id } = op.payload;
+      const space = db.prepare("SELECT level_id, deleted_at FROM spaces WHERE id = ?").get(id) as
+        | { level_id: string; deleted_at: number | null }
+        | undefined;
+      if (!space || space.deleted_at === null || !isLive(db, "levels", space.level_id)) return;
+      update(db, "spaces", id, now, { deleted_at: null });
       return;
     }
   }

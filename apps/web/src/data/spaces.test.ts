@@ -1,7 +1,7 @@
 import { opSchema } from "@auditoo/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createLevel, deleteLevel } from "./levels";
-import { createSpace, deleteSpace, moveSpace, renameSpace } from "./spaces";
+import { createSpace, deleteSpace, moveSpace, renameSpace, restoreSpace } from "./spaces";
 import { outboxTypes, spaceNames, testDb } from "./test-utils";
 
 async function withLevel() {
@@ -129,5 +129,31 @@ describe("deleteSpace", () => {
     await deleteSpace(db, s.id);
     expect((await db.spaces.get(s.id))?.deletedAt).not.toBeNull();
     expect((await outboxTypes(db)).filter((t) => t === "space.delete")).toHaveLength(1);
+  });
+});
+
+describe("restoreSpace", () => {
+  it("revives a deleted space and appends space.restore", async () => {
+    const { db, level } = await withLevel();
+    const s = (await createSpace(db, level.id, "S"))!;
+    await deleteSpace(db, s.id);
+    await restoreSpace(db, s.id);
+    expect((await db.spaces.get(s.id))?.deletedAt).toBeNull();
+    expect((await outboxTypes(db)).at(-1)).toBe("space.restore");
+  });
+
+  it("is a no-op for a live space, a missing space, or a deleted level", async () => {
+    const { db, level } = await withLevel();
+    const s = (await createSpace(db, level.id, "S"))!;
+    await restoreSpace(db, s.id);
+    await restoreSpace(db, crypto.randomUUID());
+    await deleteSpace(db, s.id);
+    await deleteLevel(db, level.id);
+    const before = await db.outbox.count();
+
+    await restoreSpace(db, s.id);
+
+    expect((await db.spaces.get(s.id))?.deletedAt).not.toBeNull();
+    expect(await db.outbox.count()).toBe(before);
   });
 });

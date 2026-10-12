@@ -1,7 +1,7 @@
 import { opSchema } from "@auditoo/shared";
 import { describe, expect, it, vi } from "vitest";
-import { createLevel, deleteLevel, moveLevel, renameLevel } from "./levels";
-import { createSpace } from "./spaces";
+import { createLevel, deleteLevel, moveLevel, renameLevel, restoreLevel } from "./levels";
+import { createSpace, deleteSpace } from "./spaces";
 import { levelNames, outboxTypes, testDb } from "./test-utils";
 
 describe("createLevel", () => {
@@ -126,6 +126,34 @@ describe("deleteLevel", () => {
     await deleteLevel(db, id);
     await deleteLevel(db, id);
     expect((await outboxTypes(db)).filter((t) => t === "level.delete")).toHaveLength(1);
+  });
+});
+
+describe("restoreLevel", () => {
+  it("revives the level and the spaces its delete cascaded to, with one op", async () => {
+    const db = testDb();
+    const level = await createLevel(db, "A");
+    const kept = (await createSpace(db, level.id, "Kept"))!;
+    const gone = (await createSpace(db, level.id, "Gone"))!;
+    await deleteSpace(db, gone.id);
+    await deleteLevel(db, level.id);
+
+    await restoreLevel(db, level.id);
+
+    expect((await db.levels.get(level.id))?.deletedAt).toBeNull();
+    expect((await db.spaces.get(kept.id))?.deletedAt).toBeNull();
+    expect((await db.spaces.get(gone.id))?.deletedAt).not.toBeNull();
+    const types = await outboxTypes(db);
+    expect(types.filter((t) => t.endsWith(".restore"))).toEqual(["level.restore"]);
+  });
+
+  it("is a no-op on a live or missing level", async () => {
+    const db = testDb();
+    const { id } = await createLevel(db, "A");
+    const before = await db.outbox.count();
+    await restoreLevel(db, id);
+    await restoreLevel(db, crypto.randomUUID());
+    expect(await db.outbox.count()).toBe(before);
   });
 });
 

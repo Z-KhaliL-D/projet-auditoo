@@ -26,6 +26,7 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS spaces_seq ON spaces(seq);
   CREATE INDEX IF NOT EXISTS spaces_level ON spaces(level_id);
   INSERT OR IGNORE INTO meta (key, value) VALUES ('seq', 0);
+  INSERT OR IGNORE INTO meta (key, value) VALUES ('ts', 0);
 `;
 
 export function createDb(path: string): Db {
@@ -46,4 +47,13 @@ export function nextSeq(db: Db): number {
     .prepare("UPDATE meta SET value = value + 1 WHERE key = 'seq' RETURNING value")
     .get() as { value: number };
   return row.value;
+}
+
+// Strictly increasing, so two ops never share a timestamp. level.restore relies
+// on this: it restores the spaces whose deletedAt equals the level's.
+export function nextTimestamp(db: Db): number {
+  const row = db.prepare("SELECT value FROM meta WHERE key = 'ts'").get() as { value: number };
+  const ts = Math.max(Date.now(), row.value + 1);
+  db.prepare("UPDATE meta SET value = ? WHERE key = 'ts'").run(ts);
+  return ts;
 }

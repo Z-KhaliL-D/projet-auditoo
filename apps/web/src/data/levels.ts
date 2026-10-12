@@ -1,5 +1,6 @@
 import { type Level, compareByRank, nameSchema } from "@auditoo/shared";
 import type { AuditooDb } from "./db";
+import { tick } from "./clock";
 import { appendOp } from "./outbox";
 import { rankAt } from "./ranking";
 
@@ -12,7 +13,7 @@ async function liveLevels(db: AuditooDb, exceptId?: string): Promise<Level[]> {
 
 export async function createLevel(db: AuditooDb, name: string, index?: number): Promise<Level> {
   const trimmed = nameSchema.parse(name);
-  const now = Date.now();
+  const now = tick();
   return db.transaction("rw", db.levels, db.outbox, async () => {
     const rank = rankAt(await liveLevels(db), index);
     const level: Level = { id: crypto.randomUUID(), name: trimmed, rank, updatedAt: now, deletedAt: null };
@@ -24,7 +25,7 @@ export async function createLevel(db: AuditooDb, name: string, index?: number): 
 
 export async function renameLevel(db: AuditooDb, id: string, name: string): Promise<void> {
   const trimmed = nameSchema.parse(name);
-  const now = Date.now();
+  const now = tick();
   await db.transaction("rw", db.levels, db.outbox, async () => {
     const level = await db.levels.get(id);
     if (!level || level.deletedAt !== null) return;
@@ -34,7 +35,7 @@ export async function renameLevel(db: AuditooDb, id: string, name: string): Prom
 }
 
 export async function moveLevel(db: AuditooDb, id: string, index: number): Promise<void> {
-  const now = Date.now();
+  const now = tick();
   await db.transaction("rw", db.levels, db.outbox, async () => {
     const level = await db.levels.get(id);
     if (!level || level.deletedAt !== null) return;
@@ -46,7 +47,7 @@ export async function moveLevel(db: AuditooDb, id: string, index: number): Promi
 
 // One op only: the server cascades to the spaces, the local copy cascades here.
 export async function deleteLevel(db: AuditooDb, id: string): Promise<void> {
-  const now = Date.now();
+  const now = tick();
   await db.transaction("rw", db.levels, db.spaces, db.outbox, async () => {
     const level = await db.levels.get(id);
     if (!level || level.deletedAt !== null) return;
@@ -57,5 +58,21 @@ export async function deleteLevel(db: AuditooDb, id: string): Promise<void> {
       .filter((s) => s.deletedAt === null)
       .modify({ deletedAt: now, updatedAt: now });
     await appendOp(db, { type: "level.delete", payload: { id } }, now);
+  });
+}
+
+// Revives the level and only the spaces its own delete cascaded to.
+export async function restoreLevel(db: AuditooDb, id: string): Promise<void> {
+  const now = tick();
+  await db.transaction("rw", db.levels, db.spaces, db.outbox, async () => {
+    const level = await db.levels.get(id);
+    if (!level || level.deletedAt === null) return;
+    await db.levels.update(id, { deletedAt: null, updatedAt: now });
+    await db.spaces
+      .where("levelId")
+      .equals(id)
+      .filter((s) => s.deletedAt === level.deletedAt)
+      .modify({ deletedAt: null, updatedAt: now });
+    await appendOp(db, { type: "level.restore", payload: { id } }, now);
   });
 }

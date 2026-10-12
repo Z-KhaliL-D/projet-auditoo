@@ -1,5 +1,6 @@
 import { type Space, compareByRank, nameSchema } from "@auditoo/shared";
 import type { AuditooDb } from "./db";
+import { tick } from "./clock";
 import { appendOp } from "./outbox";
 import { rankAt } from "./ranking";
 
@@ -24,7 +25,7 @@ export async function createSpace(
   index?: number,
 ): Promise<Space | undefined> {
   const trimmed = nameSchema.parse(name);
-  const now = Date.now();
+  const now = tick();
   return db.transaction("rw", db.levels, db.spaces, db.outbox, async () => {
     if (!(await isLiveLevel(db, levelId))) return undefined;
     const rank = rankAt(await liveSpaces(db, levelId), index);
@@ -37,7 +38,7 @@ export async function createSpace(
 
 export async function renameSpace(db: AuditooDb, id: string, name: string): Promise<void> {
   const trimmed = nameSchema.parse(name);
-  const now = Date.now();
+  const now = tick();
   await db.transaction("rw", db.spaces, db.outbox, async () => {
     const space = await db.spaces.get(id);
     if (!space || space.deletedAt !== null) return;
@@ -52,7 +53,7 @@ export async function moveSpace(
   levelId: string,
   index: number,
 ): Promise<void> {
-  const now = Date.now();
+  const now = tick();
   await db.transaction("rw", db.levels, db.spaces, db.outbox, async () => {
     const space = await db.spaces.get(id);
     if (!space || space.deletedAt !== null || !(await isLiveLevel(db, levelId))) return;
@@ -63,11 +64,21 @@ export async function moveSpace(
 }
 
 export async function deleteSpace(db: AuditooDb, id: string): Promise<void> {
-  const now = Date.now();
+  const now = tick();
   await db.transaction("rw", db.spaces, db.outbox, async () => {
     const space = await db.spaces.get(id);
     if (!space || space.deletedAt !== null) return;
     await db.spaces.update(id, { deletedAt: now, updatedAt: now });
     await appendOp(db, { type: "space.delete", payload: { id } }, now);
+  });
+}
+
+export async function restoreSpace(db: AuditooDb, id: string): Promise<void> {
+  const now = tick();
+  await db.transaction("rw", db.levels, db.spaces, db.outbox, async () => {
+    const space = await db.spaces.get(id);
+    if (!space || space.deletedAt === null || !(await isLiveLevel(db, space.levelId))) return;
+    await db.spaces.update(id, { deletedAt: null, updatedAt: now });
+    await appendOp(db, { type: "space.restore", payload: { id } }, now);
   });
 }

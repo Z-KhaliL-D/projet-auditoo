@@ -29,6 +29,11 @@ export const opSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     ...base,
+    type: z.literal("level.restore"),
+    payload: z.object({ id: idSchema }),
+  }),
+  z.object({
+    ...base,
     type: z.literal("space.create"),
     payload: z.object({
       id: idSchema,
@@ -50,6 +55,11 @@ export const opSchema = z.discriminatedUnion("type", [
   z.object({
     ...base,
     type: z.literal("space.delete"),
+    payload: z.object({ id: idSchema }),
+  }),
+  z.object({
+    ...base,
+    type: z.literal("space.restore"),
     payload: z.object({ id: idSchema }),
   }),
 ]);

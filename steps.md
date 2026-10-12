@@ -55,3 +55,16 @@ Log of each step: what was built, how it was verified, and the commit.
 - Verified:
   - 31 Vitest tests pass in `apps/web`: rank placement and ties, cursor, create and rename, move and delete for levels and spaces, no-ops on deleted targets, rollback when the outbox write fails, outbox order.
   - `tsc --noEmit` passes.
+
+## Step 5a: Restore ops for undo
+
+- Commit: `feat: restore ops for undo across shared, api and web`
+- Built:
+  - Shared: `level.restore` and `space.restore` ops.
+  - API: restore handling in `applyOp`. Restoring a level revives only the spaces its delete cascaded to. Restoring a space under a deleted level is an applied no-op.
+  - API: strictly increasing timestamps (`nextTimestamp`, `meta.ts`) so one push batch never gives two ops the same `deletedAt`.
+  - Web data: `restoreLevel`, `restoreSpace`, and `tick()` in `data/clock.ts` for strictly increasing local timestamps.
+- Verified:
+  - Shared 29, API 27, web 36 Vitest tests pass.
+  - `tsc --noEmit` passes in all three.
+  - Same-batch case covered: a space deleted before its level in the same push stays deleted after the level restore.

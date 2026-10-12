@@ -1,8 +1,8 @@
 import type { Op, PushResponse } from "@auditoo/shared";
-import type { Db } from "../db";
+import { type Db, nextTimestamp } from "../db";
 import { applyOp } from "./apply";
 
-export function pushOps(db: Db, ops: Op[], now = Date.now()): PushResponse {
+export function pushOps(db: Db, ops: Op[]): PushResponse {
   const isProcessed = db.prepare("SELECT 1 FROM processed_ops WHERE op_id = ?");
   const markProcessed = db.prepare("INSERT INTO processed_ops (op_id) VALUES (?)");
 
@@ -13,7 +13,7 @@ export function pushOps(db: Db, ops: Op[], now = Date.now()): PushResponse {
         result.skipped.push(op.opId);
         continue;
       }
-      applyOp(db, op, now);
+      applyOp(db, op, nextTimestamp(db));
       markProcessed.run(op.opId);
       result.applied.push(op.opId);
     }

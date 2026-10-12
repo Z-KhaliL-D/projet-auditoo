@@ -17,3 +17,13 @@
 - 2026-10-07: Mutations take a target index and compute the rank inside the transaction from the live siblings. Reason: a stale UI list can never produce a wrong rank.
 - 2026-10-07: Deleting a level locally soft-deletes its spaces and appends a single `level.delete` op. Reason: the server cascades, so extra ops would only flood the outbox.
 - 2026-10-07: Edits on a missing or deleted target are silent no-ops with nothing appended. Names are validated with `nameSchema` and every op is parsed with `opSchema` before it enters the outbox. Reason: bad ops never reach the server, so its 400 stays a safety net.
+- 2026-10-10: Undo for deletes uses new `level.restore` and `space.restore` ops. Reason: undo stays a normal synced op and keeps identity, unlike delaying the delete or recreating items.
+- 2026-10-10: Restoring a level revives only the spaces its own delete cascaded to (same `deletedAt`). Reason: spaces deleted earlier must stay deleted.
+- 2026-10-10: Timestamps are strictly increasing on the server (`meta.ts`) and in the client (`tick`). Reason: the cascade match on `deletedAt` breaks if two ops share a timestamp, for example in one push batch.
+- 2026-10-10: Restoring a space under a deleted level is an applied no-op. Reason: undo is not new data, and the space would be invisible.
+- 2026-10-10: Main screen is one page with collapsible level sections, expanded by default. Reason: one scroll gives an overview of the building.
+- 2026-10-10: Add flow is inline: an "Add space" row at the end of each level that keeps the input open after Enter, and a fixed bottom "Add level" button. Reason: one tap plus typing, and the main action is in thumb reach.
+- 2026-10-10: Row actions are a 44px menu button (Rename, Delete) with in-place rename. Reason: keeps the row body free for swipe-to-delete later. Empty slots are reserved for the drag handle and the header sync badge, with no fake placeholders.
+- 2026-10-10: Undo toasts use `sonner`, and the UI adds `dexie-react-hooks`. Reason: sonner is the shadcn toast, and `useLiveQuery` needs the hooks package.
+- 2026-10-10: Teal accent, dark mode follows the system with no toggle. Reason: calm, readable in both themes, and less header clutter.
+- 2026-10-10: A few component tests cover add, rename, delete and undo, using Testing Library and jsdom (dev-only). Reason: guards the core flows without testing styling.

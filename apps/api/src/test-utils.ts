@@ -28,6 +28,8 @@ export const ops = {
   levelRename: (id: string, name: string): Op => ({ ...meta(), type: "level.rename", payload: { id, name } }),
   levelMove: (id: string, rank: string): Op => ({ ...meta(), type: "level.move", payload: { id, rank } }),
   levelDelete: (id: string): Op => ({ ...meta(), type: "level.delete", payload: { id } }),
+  levelRestore: (id: string): Op => ({ ...meta(), type: "level.restore", payload: { id } }),
+  spaceRestore: (id: string): Op => ({ ...meta(), type: "space.restore", payload: { id } }),
   spaceCreate: (id: string, levelId: string, name = "S", rank = "a0"): Op => ({ ...meta(), type: "space.create", payload: { id, levelId, name, rank } }),
   spaceRename: (id: string, name: string): Op => ({ ...meta(), type: "space.rename", payload: { id, name } }),
   spaceMove: (id: string, levelId: string, rank: string): Op => ({ ...meta(), type: "space.move", payload: { id, levelId, rank } }),
