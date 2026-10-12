@@ -7,22 +7,26 @@ Offline-first, mobile-first PWA for housing inspectors to describe a building's 
 | Area | Tools |
 |---|---|
 | Monorepo | npm workspaces: `apps/web`, `apps/api`, `packages/shared` |
-| Web | Vite, React 19, TypeScript (strict), TanStack Router (file-based SPA), Tailwind CSS v4, shadcn/ui, lucide-react |
+| Web | Vite, React 19, TypeScript (strict), TanStack Router (file-based SPA), Tailwind CSS v4, shadcn/ui (base-nova), lucide-react |
 | Local data | Dexie (IndexedDB), `useLiveQuery` |
 | Interactions | dnd-kit (drag and drop) |
 | PWA | Serwist (`@serwist/vite`) |
-| API | TypeScript, Hono on Node, better-sqlite3, zod |
+| API | TypeScript, Hono on Node, better-sqlite3 |
+| Validation | zod (schemas in `packages/shared`) |
 | Ordering | `fractional-indexing` |
 | Tests | Vitest |
+| Dev tooling | concurrently |
 
-Do not add or swap libraries without asking.
+- Do not add or swap app libraries without asking.
+- Dev-only tooling (type definitions, test helpers) is allowed; mention it when added.
 
 ## Data model
 
 - `Level`: id, name, rank, updatedAt, deletedAt
 - `Space`: id, levelId, name, rank, updatedAt, deletedAt
 - A space belongs to exactly one level.
-- Lists are sorted by `(rank, id)`.
+- Lists are sorted by `(rank, id)` using `compareByRank` (plain `<`, never `localeCompare`).
+- Ops have an envelope (`opId`, `createdAt`, `type`) and a nested `payload`.
 - Types and zod schemas live in `packages/shared` and are imported by both apps.
 
 ## Architecture rules
@@ -36,7 +40,7 @@ Do not add or swap libraries without asking.
 ## Sync
 
 - `POST /api/sync/push`: batched ops, applied in order in one transaction, idempotent by `opId`.
-- `GET /api/sync/pull?since=<seq>`: returns rows changed since the cursor and the new cursor.
+- `GET /api/sync/pull?since=<cursor>`: returns rows changed since the cursor and the new cursor. The cursor is a server sequence number, not a timestamp.
 - Outbox ops are removed only after a successful push.
 - During pull, entities with pending outbox ops keep their local state.
 - Triggers: `online` event, window focus, debounced after each mutation, retry with exponential backoff.
@@ -51,12 +55,22 @@ Do not add or swap libraries without asking.
 - Drag uses a handle only. Swipe-to-delete uses the row body. Neither may block scrolling.
 - Deletes are immediate with an undo toast. No confirmation dialogs.
 
+## Decision protocol
+
+I own the architecture and design decisions. You implement.
+
+- Before implementing a step, list the decisions it involves that are not already fixed in this file.
+- For each decision: give 2 or 3 options, the tradeoffs in one line each, and your recommendation.
+- Wait for my choice before writing code.
+- Trivial choices (naming, file layout inside a folder) do not need a decision; state them in the summary.
+- Record each decision I make in `DECISIONS.md`: the date, the decision, and the reason, one line each.
+
 ## Working rules
 
 - Work in small steps. After each step, stop and explain how to test it.
 - Explain non-obvious decisions in one or two sentences.
 - Write Vitest tests for sync logic and API endpoints.
 - Keep files small and focused. No dead code.
-- Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`).
+- Never commit until I say so.
+- Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`). No co-author lines.
 - Never use em dashes in code comments or docs.
-- If a decision is ambiguous and hard to undo, ask for clarification before writing code. Do not assume. 
