@@ -42,3 +42,16 @@ Log of each step: what was built, how it was verified, and the commit.
   - `tsc --noEmit` passes.
   - Manual check against a real server: a push created a level and the pull returned it with cursor 1.
   - User replayed a push with the same opId through curl and it was skipped.
+
+## Step 4: Local data layer (apps/web)
+
+- Commit: `5ca7905 feat(web): dexie local data layer with outbox mutations`
+- Built:
+  - Dexie `AuditooDb` with `levels`, `spaces`, `outbox` (auto-increment key, `opId` indexed) and `meta` (pull cursor via `getCursor` and `setCursor`).
+  - Mutations for all 8 op types in `data/levels.ts` and `data/spaces.ts`. Each one updates the local table and appends the op in one Dexie transaction.
+  - `rankAt` in `data/ranking.ts` computes ranks from the target index with `generateKeyBetween`.
+  - New dependencies: `dexie`, `fractional-indexing`. Dev-only: `fake-indexeddb`.
+  - Test setup uses `vitest.config.ts` with `fake-indexeddb/auto`. Replaced `__dirname` with `import.meta.dirname` in both Vite configs to silence the native config loader warning.
+- Verified:
+  - 31 Vitest tests pass in `apps/web`: rank placement and ties, cursor, create and rename, move and delete for levels and spaces, no-ops on deleted targets, rollback when the outbox write fails, outbox order.
+  - `tsc --noEmit` passes.

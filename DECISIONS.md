@@ -12,3 +12,8 @@
 - 2026-10-07: The server cascades `level.delete` to the level's live spaces. Reason: a space created on another device would otherwise stay alive under a deleted level.
 - 2026-10-07: An invalid push body returns 400 and applies nothing, and a DB error rolls back the whole batch. The client must handle a 400 (drop or quarantine the offending op) so one bad op can never block the outbox forever. Reason: all-or-nothing batches avoid silent partial data loss.
 - 2026-10-07: Pull has no size limit for now. Reason: inspection data is small and paging would change `PullResponse`.
+- 2026-10-07: Mutation functions take the Dexie `db` as first argument, with one exported `db` instance for the app. Reason: explicit and easy to test with fake-indexeddb.
+- 2026-10-07: The outbox uses an auto-increment local key with the whole `Op` stored and `opId` indexed. Reason: send order equals mutation order without depending on device clocks.
+- 2026-10-07: Mutations take a target index and compute the rank inside the transaction from the live siblings. Reason: a stale UI list can never produce a wrong rank.
+- 2026-10-07: Deleting a level locally soft-deletes its spaces and appends a single `level.delete` op. Reason: the server cascades, so extra ops would only flood the outbox.
+- 2026-10-07: Edits on a missing or deleted target are silent no-ops with nothing appended. Names are validated with `nameSchema` and every op is parsed with `opSchema` before it enters the outbox. Reason: bad ops never reach the server, so its 400 stays a safety net.
