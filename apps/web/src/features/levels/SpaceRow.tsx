@@ -15,6 +15,7 @@ export function SpaceRow({ space }: { space: Space }) {
   const [editing, setEditing] = useState(false);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: space.id,
+    data: { kind: "space" },
   });
 
   return (

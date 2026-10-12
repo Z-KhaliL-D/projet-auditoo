@@ -46,3 +46,5 @@
 - 2026-10-12: A drop resolves to the final index among the destination's live siblings and calls the existing move mutations. A drop that changes nothing writes no op. Reason: matches the mutations' index semantics and keeps no-op moves out of the outbox.
 - 2026-10-12: Drag handles are always visible, with no reorder mode. Reason: fastest to use, and the left slot was reserved for them.
 - 2026-10-12: Drag logic is unit-tested as pure functions and a hook, with handle rendering checked in a component test. The feel is verified by hand on a phone, and Playwright is deferred. Reason: jsdom cannot simulate real pointer drags or layout.
+- 2026-10-12: Levels and spaces share one `DndContext`, and collision detection only compares items of the same kind. Reason: otherwise a dragged level could land on one of its own spaces.
+- 2026-10-12: While a level is dragged, every level folds visually without touching the saved collapsed state. Reason: expanded levels are too tall to carry on a phone.

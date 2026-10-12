@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLevel } from "@/data/levels";
 import { testDb } from "@/data/test-utils";
 import { type SyncEngine, createSyncEngine } from "./engine";
@@ -41,7 +41,7 @@ describe("sync engine", () => {
 
     await createLevel(db, "A");
     await createLevel(db, "B");
-    await new Promise((r) => setTimeout(r, 20));
+    await vi.waitFor(() => expect(scheduler.pending()).toBe(1));
     scheduler.advance(999);
     expect(transport.push).not.toHaveBeenCalled();
     scheduler.advance(1);
@@ -187,7 +187,7 @@ describe("sync engine", () => {
     );
 
     const first = engine.trigger();
-    await new Promise((r) => setTimeout(r, 20));
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
     void engine.trigger();
     void engine.trigger();
     expect(engine.getSnapshot().syncing).toBe(true);
@@ -298,9 +298,9 @@ describe("sync engine", () => {
         () => new Promise((resolve) => (release = () => resolve({ levels: [], spaces: [], cursor: 0 }))),
       );
       const run = engine.trigger();
-      await new Promise((r) => setTimeout(r, 20));
+      await vi.waitFor(() => expect(release).toBeTypeOf("function"));
       await createLevel(db, "During");
-      await new Promise((r) => setTimeout(r, 20));
+      await vi.waitFor(() => expect(scheduler.pending()).toBe(1));
       release();
       await run;
       transport.push.mockClear();

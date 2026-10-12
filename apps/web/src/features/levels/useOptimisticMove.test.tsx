@@ -2,12 +2,14 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import type { Space } from "@auditoo/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { moveLevel } from "@/data/levels";
 import { moveSpace } from "@/data/spaces";
-import { applyMove } from "./drop";
+import { type Move, applyMove } from "./drop";
 import type { LevelWithSpaces } from "./useLevelTree";
 import { useOptimisticMove } from "./useOptimisticMove";
 
 vi.mock("@/data/spaces", () => ({ moveSpace: vi.fn() }));
+vi.mock("@/data/levels", () => ({ moveLevel: vi.fn() }));
 
 const space = (id: string): Space => ({ id, levelId: "L", name: id, rank: id, updatedAt: 1, deletedAt: null });
 const level = (ids: string[]): LevelWithSpaces[] => [
@@ -15,11 +17,12 @@ const level = (ids: string[]): LevelWithSpaces[] => [
 ];
 const order = (levels: LevelWithSpaces[] | undefined) => levels?.[0].spaces.map((s) => s.id);
 
-const move = { id: "a", levelId: "L", index: 2 };
+const move: Move = { kind: "space", id: "a", levelId: "L", index: 2 };
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.mocked(moveSpace).mockResolvedValue(undefined);
+  vi.mocked(moveLevel).mockResolvedValue(undefined);
 });
 afterEach(() => {
   cleanup();
@@ -93,5 +96,19 @@ describe("useOptimisticMove", () => {
       vi.advanceTimersByTime(500);
     });
     expect(result.current.levels).toBe(before);
+  });
+
+  it("writes a level move through moveLevel and shows the new level order", async () => {
+    const two: LevelWithSpaces[] = [
+      { id: "L1", name: "L1", rank: "a", updatedAt: 1, deletedAt: null, spaces: [] },
+      { id: "L2", name: "L2", rank: "b", updatedAt: 1, deletedAt: null, spaces: [] },
+    ];
+    const { result } = renderHook(({ d }) => useOptimisticMove(d), { initialProps: { d: two } });
+
+    await act(async () => result.current.commit({ kind: "level", id: "L1", index: 1 }));
+
+    expect(result.current.levels?.map((l) => l.id)).toEqual(["L2", "L1"]);
+    expect(moveLevel).toHaveBeenCalledWith(expect.anything(), "L1", 1);
+    expect(moveSpace).not.toHaveBeenCalled();
   });
 });

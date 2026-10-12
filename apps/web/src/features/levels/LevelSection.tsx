@@ -1,4 +1,5 @@
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { db } from "@/data/db";
 import { renameLevel } from "@/data/levels";
 import { createSpace } from "@/data/spaces";
 import { deleteLevelWithUndo } from "./deleteWithUndo";
+import { DragHandle } from "./DragHandle";
 import { NameInput } from "./NameInput";
 import { RowMenu } from "./RowMenu";
 import { SpaceRow } from "./SpaceRow";
@@ -17,10 +19,19 @@ export function LevelSection({ level, collapsed, onToggle }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [adding, setAdding] = useState(false);
   const count = level.spaces.length;
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: level.id,
+    data: { kind: "level" },
+  });
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
-      <div className="flex min-h-14 items-center gap-1 pl-4">
+    <section
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={`overflow-hidden rounded-xl border bg-card ${isDragging ? "opacity-40" : ""}`}
+    >
+      <div className="flex min-h-14 items-center gap-1 pl-1">
+        <DragHandle ref={setActivatorNodeRef} label={level.name} {...attributes} {...listeners} />
         {renaming ? (
           <div className="flex-1 py-1 pr-3">
             <NameInput

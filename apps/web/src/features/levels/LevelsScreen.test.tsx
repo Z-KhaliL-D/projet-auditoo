@@ -172,4 +172,16 @@ describe("LevelsScreen", () => {
     expect(name.getAttribute("role")).toBeNull();
     expect(name.getAttribute("tabindex")).toBeNull();
   });
+
+  it("gives every level a 44px drag handle", async () => {
+    const user = userEvent.setup();
+    render(<LevelsScreen />);
+    await addLevel(user, "Ground");
+    await user.keyboard("{Escape}");
+
+    const handle = await screen.findByRole("button", { name: "Reorder Ground" });
+
+    expect(handle.className).toContain("size-11");
+    expect(handle.className).toContain("touch-none");
+  });
 });

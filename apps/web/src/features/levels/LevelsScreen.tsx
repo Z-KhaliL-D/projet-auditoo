@@ -7,7 +7,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { db } from "@/data/db";
 import { createLevel } from "@/data/levels";
 import { SyncBadge } from "@/sync/SyncBadge";
+import { collideWithSameKind } from "./collision";
 import { DragPreview } from "./DragHandle";
-import { resolveSpaceDrop } from "./drop";
+import { type DragKind, resolveDrop } from "./drop";
 import { LevelSection } from "./LevelSection";
 import { NameInput } from "./NameInput";
 import { useCollapsed } from "./useCollapsed";
@@ -27,16 +28,20 @@ export function LevelsScreen() {
   const { levels, commit } = useOptimisticMove(useLevelTree());
   const { collapsed, toggle } = useCollapsed();
   const [adding, setAdding] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const activeSpace = levels?.flatMap((l) => l.spaces).find((s) => s.id === activeId);
+  const draggingLevel = active?.kind === "level";
+  const activeName = (active?.kind === "level" ? levels : levels?.flatMap((l) => l.spaces))?.find(
+    (item) => item.id === active?.id,
+  )?.name;
 
-  function onDragEnd({ active, over }: DragEndEvent) {
-    setActiveId(null);
-    const move = over && levels ? resolveSpaceDrop(levels, String(active.id), String(over.id)) : null;
+  function onDragEnd({ active: dragged, over }: DragEndEvent) {
+    const kind = active?.kind;
+    setActive(null);
+    const move = kind && over && levels ? resolveDrop(levels, kind, String(dragged.id), String(over.id)) : null;
     if (move) commit(move);
   }
   const addRef = useRef<HTMLDivElement>(null);
@@ -54,9 +59,12 @@ export function LevelsScreen() {
 
       <DndContext
         sensors={sensors}
-        onDragStart={({ active }) => setActiveId(String(active.id))}
+        collisionDetection={collideWithSameKind}
+        onDragStart={({ active: dragged }) =>
+          setActive({ id: String(dragged.id), kind: dragged.data.current?.kind as DragKind })
+        }
         onDragEnd={onDragEnd}
-        onDragCancel={() => setActiveId(null)}
+        onDragCancel={() => setActive(null)}
       >
         <main className="flex-1 space-y-3 px-3 pt-3 pb-28">
           {levels === undefined ? null : levels.length === 0 && !adding ? (
@@ -67,14 +75,17 @@ export function LevelsScreen() {
               </p>
             </div>
           ) : (
-            levels.map((level) => (
-              <LevelSection
-                key={level.id}
-                level={level}
-                collapsed={collapsed.has(level.id)}
-                onToggle={() => toggle(level.id)}
-              />
-            ))
+            <SortableContext items={levels.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+              {levels.map((level) => (
+                <LevelSection
+                  key={level.id}
+                  level={level}
+                  // While a level is carried every level folds, so the list is short enough to drag through.
+                  collapsed={draggingLevel || collapsed.has(level.id)}
+                  onToggle={() => toggle(level.id)}
+                />
+              ))}
+            </SortableContext>
           )}
           {adding && (
             <div ref={addRef} className="rounded-xl border bg-card p-2">
@@ -88,7 +99,7 @@ export function LevelsScreen() {
             </div>
           )}
         </main>
-        <DragOverlay>{activeSpace ? <DragPreview name={activeSpace.name} /> : null}</DragOverlay>
+        <DragOverlay>{activeName ? <DragPreview name={activeName} bold={draggingLevel} /> : null}</DragOverlay>
       </DndContext>
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">

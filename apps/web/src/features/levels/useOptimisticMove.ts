@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/data/db";
+import { moveLevel } from "@/data/levels";
 import { moveSpace } from "@/data/spaces";
-import { type SpaceMove, applyMove, reflects } from "./drop";
+import { type Move, applyMove, reflects } from "./drop";
 import type { LevelWithSpaces } from "./useLevelTree";
 
-type Pending = { move: SpaceMove; token: number; settled: boolean };
+type Pending = { move: Move; token: number; settled: boolean };
 
 const GIVE_UP_MS = 500;
 
@@ -31,10 +32,11 @@ export function useOptimisticMove(levels: LevelWithSpaces[] | undefined) {
     [levels, pending],
   );
 
-  function commit(move: SpaceMove) {
+  function commit(move: Move) {
     const token = ++counter.current;
     setPending({ move, token, settled: false });
-    void moveSpace(db, move.id, move.levelId, move.index).finally(() =>
+    const write = move.kind === "level" ? moveLevel(db, move.id, move.index) : moveSpace(db, move.id, move.levelId, move.index);
+    void write.finally(() =>
       setPending((p) => (p?.token === token ? { ...p, settled: true } : p)),
     );
   }

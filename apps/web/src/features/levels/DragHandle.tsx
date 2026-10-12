@@ -19,13 +19,15 @@ export function DragHandle({ label, ref, ...props }: Props) {
   );
 }
 
-export function DragPreview({ name }: { name: string }) {
+export function DragPreview({ name, bold }: { name: string; bold?: boolean }) {
   return (
-    <div className="flex min-h-11 items-center gap-1 rounded-lg border bg-card pr-4 shadow-lg ring-1 ring-foreground/10">
+    <div
+      className={`flex items-center gap-1 rounded-lg border bg-card pr-4 shadow-lg ring-1 ring-foreground/10 ${bold ? "min-h-14" : "min-h-11"}`}
+    >
       <div className="flex size-11 items-center justify-center text-muted-foreground">
         <GripVertical className="size-5" />
       </div>
-      <span className="truncate text-[15px]">{name}</span>
+      <span className={bold ? "truncate text-base font-semibold" : "truncate text-[15px]"}>{name}</span>
     </div>
   );
 }

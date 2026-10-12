@@ -129,3 +129,18 @@ Log of each step: what was built, how it was verified, and the commit.
   - 125 Vitest tests pass in `apps/web`, including the drop logic, the optimistic hook and handle rendering.
   - `tsc --noEmit` and `vite build` pass.
   - Not yet checked by hand on a phone: drag feel, scrolling, edge auto-scroll.
+
+## Step 7b: Reorder levels
+
+- Commit: `feat(web): drag to reorder levels`
+- Built:
+  - Each level header has the same 44px drag handle, in the slot left of the chevron. Only the handle starts a drag.
+  - Levels are a sortable list in the same `DndContext` as the spaces. `collideWithSameKind` keeps a dragged level from colliding with spaces, and the reverse.
+  - While a level is dragged, every level folds so the list is short; the saved collapsed state is untouched.
+  - `drop.ts` now handles both kinds of move (`resolveDrop`, `applyMove`, `reflects`), and `useOptimisticMove` writes level moves through `moveLevel`.
+  - The drag preview for a level is taller and bold.
+- Verified:
+  - 134 Vitest tests pass in `apps/web`: level drop logic, the optimistic hook for level moves, the same-kind collision filter, and handle rendering for levels.
+  - `tsc --noEmit` passes.
+  - Not yet checked by hand on a phone: the fold animation when a level drag starts (the layout changes while the drag measures its targets), drag feel, and edge auto-scroll.
+  - Fixed two timing-dependent waits in the engine tests that failed once under load. They now wait for the condition instead of a fixed 20 ms.
