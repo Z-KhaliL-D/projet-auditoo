@@ -2,3 +2,5 @@ node_modules
 dist
 *.db
 .env
+*.db-wal
+*.db-shm
