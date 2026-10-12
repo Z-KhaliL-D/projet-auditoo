@@ -31,7 +31,7 @@ Log of each step: what was built, how it was verified, and the commit.
 
 ## Step 3: Backend sync API
 
-- Commit: `feat(api): sync push and pull endpoints with sqlite`
+- Commit: `c26e334 feat(api): sync push and pull endpoints with sqlite`
 - Built:
   - SQLite tables `levels`, `spaces`, `processed_ops`, `meta` (global `seq` counter).
   - `POST /api/sync/push`: ordered ops in one transaction, skips processed opIds, 400 on an invalid body.
@@ -45,7 +45,7 @@ Log of each step: what was built, how it was verified, and the commit.
 
 ## Step 4: Local data layer (apps/web)
 
-- Commit: `5ca7905 feat(web): dexie local data layer with outbox mutations`
+- Commit: `4844396 feat(web): dexie local data layer with outbox mutations`
 - Built:
   - Dexie `AuditooDb` with `levels`, `spaces`, `outbox` (auto-increment key, `opId` indexed) and `meta` (pull cursor via `getCursor` and `setCursor`).
   - Mutations for all 8 op types in `data/levels.ts` and `data/spaces.ts`. Each one updates the local table and appends the op in one Dexie transaction.
