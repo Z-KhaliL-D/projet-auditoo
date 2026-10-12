@@ -85,3 +85,26 @@ Log of each step: what was built, how it was verified, and the commit.
 - Bugs caught while testing:
   - Characters typed right after Enter while adding were wiped by a late state reset. The field now clears before the write starts.
   - Undo on a space toast would do nothing after its level was deleted, so those toasts are dismissed when the level is deleted.
+
+## Step 6: Sync engine and status badge
+
+- Commit: `feat(web): sync engine, status badge and periodic pull`
+- Built:
+  - `sync/http.ts`: transport with a 15 second timeout; network errors, timeouts and non-JSON 200s are `OfflineError`, other failures are `ServerError`.
+  - `sync/push.ts`: sends the outbox in order in chunks of 100, removes ops only after the server lists them. A 400 isolates the bad op into the new `rejected` table (Dexie schema v2) and the rest continues.
+  - `sync/pull.ts`: one transaction. Skips rows with pending ops (and the spaces of a level with a pending delete or restore), copies the rest exactly, advances the cursor only when nothing was skipped.
+  - `sync/engine.ts`: triggers on start, `online`, focus, visibility, 1 second after the outbox grows, and a periodic pull every 30 seconds with jitter while the page is visible; one sync at a time; exponential backoff 2s to 60s with jitter; manual trigger bypasses the delay.
+  - `SyncBadge` in the header: Synced, Syncing, N pending, Offline (with pending count), Sync error or N not accepted. Tapping it syncs now.
+- Verified:
+  - 107 Vitest tests pass in `apps/web`: transport, push, pull, engine (fake scheduler, including the periodic pull), badge state and view, and integration files with two devices on the real API app.
+  - Integration cases: devices converge on identical rows, undo on another device matches the cascade through `deletedAt`, a pending rename survives a pull and the device still converges after the server deleted the level, a refused op is quarantined while the rest arrives, a lost response is re-sent without duplicates.
+  - An idle device receives another device's change with no local action once the poll fires.
+  - `tsc --noEmit` passes.
+  - Not yet checked in a real browser with the dev servers.
+- Known limits:
+  - No UI to inspect or retry rejected ops yet. Ops that depend on a rejected op are accepted by the server as no-ops, so that data stays on this device only.
+  - iOS has no Background Sync, so changes upload only while the app is open.
+  - Focus and visibility can both fire on return to the app, costing one extra pass.
+  - A remote delete can remove a level while another device has its add input open, dropping the typed text.
+- For the deploy step:
+  - If the server database is reset or lost, ops already pushed are not re-sent and the server cannot recover them. The SQLite file must live on a persistent volume.

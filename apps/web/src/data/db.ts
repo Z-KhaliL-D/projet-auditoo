@@ -3,12 +3,15 @@ import Dexie, { type Table } from "dexie";
 
 export type OutboxEntry = { key?: number; opId: string; op: Op };
 export type MetaEntry = { key: string; value: number };
+// An op the server refused with a 400. Kept for inspection, never silently dropped.
+export type RejectedEntry = { key?: number; opId: string; op: Op; reason: string; rejectedAt: number };
 
 export class AuditooDb extends Dexie {
   levels!: Table<Level, string>;
   spaces!: Table<Space, string>;
   outbox!: Table<OutboxEntry, number>;
   meta!: Table<MetaEntry, string>;
+  rejected!: Table<RejectedEntry, number>;
 
   constructor(name = "auditoo") {
     super(name);
@@ -19,6 +22,7 @@ export class AuditooDb extends Dexie {
       outbox: "++key, opId",
       meta: "key",
     });
+    this.version(2).stores({ rejected: "++key, opId" });
   }
 }
 

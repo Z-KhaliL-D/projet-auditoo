@@ -43,7 +43,7 @@ Offline-first, mobile-first PWA for housing inspectors to describe a building's 
 - `GET /api/sync/pull?since=<cursor>`: returns rows changed since the cursor and the new cursor. The cursor is a server sequence number, not a timestamp.
 - Outbox ops are removed only after a successful push.
 - During pull, entities with pending outbox ops keep their local state.
-- Triggers: `online` event, window focus, debounced after each mutation, retry with exponential backoff.
+- Triggers: `online` event, window focus, debounced after each mutation, periodic pull (about every 30 seconds with jitter, only while the page is visible), retry with exponential backoff.
 - A failed request means offline, regardless of `navigator.onLine`.
 - Do not use the Background Sync API (unsupported on iOS Safari).
 - UI status: offline, syncing, synced, pending count, error.

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { db } from "@/data/db";
 import { createLevel } from "@/data/levels";
+import { SyncBadge } from "@/sync/SyncBadge";
 import { LevelSection } from "./LevelSection";
 import { NameInput } from "./NameInput";
 import { useCollapsed } from "./useCollapsed";
@@ -23,8 +24,7 @@ export function LevelsScreen() {
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col">
       <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between border-b bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur">
         <h1 className="text-lg font-semibold">Auditoo</h1>
-        {/* Right side of the header is reserved for the sync badge. */}
-        <div data-slot="header-actions" />
+        <SyncBadge />
       </header>
 
       <main className="flex-1 space-y-3 px-3 pt-3 pb-28">
