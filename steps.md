@@ -144,3 +144,15 @@ Log of each step: what was built, how it was verified, and the commit.
   - `tsc --noEmit` passes.
   - Not yet checked by hand on a phone: the fold animation when a level drag starts (the layout changes while the drag measures its targets), drag feel, and edge auto-scroll.
   - Fixed two timing-dependent waits in the engine tests that failed once under load. They now wait for the condition instead of a fixed 20 ms.
+
+## Step 7c: Move a space into another level
+
+- Commit: `feat(web): drag a space into another level`
+- Built:
+  - While a space is dragged over another level it appears there at once (a live preview), above or below the hovered space, so the rows shift to show the gap. The drop calls the existing `moveSpace` with the destination level and final index.
+  - An empty or folded level is itself a drop target (end of the level) and shows a primary ring while hovered. A level that shows spaces is not a target; its nearest space decides.
+  - `drop.ts`: `previewSpaceMove` (cross-level only) and `finalSpaceMove` (measured against the stored position, so dragging out and back writes nothing). `collideForKind` replaces the same-kind filter. `useOptimisticMove` gained the drag-time `preview` layer next to the post-drop `pending` layer.
+- Verified:
+  - 149 Vitest tests pass in `apps/web`: preview and final moves above, below, into empty and folded levels, out and back, collision candidates, the hook's preview and commit, and an integration test where a moved space arrives in the other level on a second device.
+  - `tsc --noEmit` and `vite build` pass.
+  - Not yet checked by hand on a phone: how the preview feels while crossing levels, the layout shift when the source level shrinks, folded-level drops, and edge auto-scroll with long lists.

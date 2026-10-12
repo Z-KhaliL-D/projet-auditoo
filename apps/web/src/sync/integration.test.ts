@@ -2,7 +2,7 @@
 // Two devices talking to the real API app (in-memory SQLite) through the real sync engine.
 import { describe, expect, it } from "vitest";
 import { createLevel, deleteLevel, renameLevel, restoreLevel } from "@/data/levels";
-import { createSpace, deleteSpace } from "@/data/spaces";
+import { createSpace, deleteSpace, moveSpace } from "@/data/spaces";
 import { testDb } from "@/data/test-utils";
 import { createSyncEngine } from "./engine";
 import { OfflineError, httpTransport, type Transport } from "./http";
@@ -23,6 +23,27 @@ describe("two devices through the real API", () => {
     expect(await b.db.levels.toArray()).toEqual(await a.db.levels.toArray());
     expect(await b.db.spaces.toArray()).toEqual(await a.db.spaces.toArray());
     expect(await b.db.spaces.count()).toBe(1);
+  });
+
+  it("a space moved into another level arrives there on the other device", async () => {
+    const transport = server();
+    const a = device(transport);
+    const b = device(transport);
+    const first = await createLevel(a.db, "First");
+    const second = await createLevel(a.db, "Second");
+    const kept = (await createSpace(a.db, second.id, "Kept"))!;
+    const moved = (await createSpace(a.db, first.id, "Moved"))!;
+    await a.sync();
+    await b.sync();
+
+    await moveSpace(a.db, moved.id, second.id, 0);
+    await a.sync();
+    await b.sync();
+
+    const arrived = (await b.db.spaces.get(moved.id))!;
+    expect(arrived.levelId).toBe(second.id);
+    expect(arrived.rank < (await b.db.spaces.get(kept.id))!.rank).toBe(true);
+    expect(await b.db.spaces.get(moved.id)).toEqual(await a.db.spaces.get(moved.id));
   });
 
   it("undo on another device matches the cascade through deletedAt", async () => {

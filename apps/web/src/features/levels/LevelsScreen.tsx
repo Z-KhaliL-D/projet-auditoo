@@ -1,6 +1,7 @@
 import {
   DndContext,
   type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
@@ -15,9 +16,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { db } from "@/data/db";
 import { createLevel } from "@/data/levels";
 import { SyncBadge } from "@/sync/SyncBadge";
-import { collideWithSameKind } from "./collision";
+import { collideForKind } from "./collision";
 import { DragPreview } from "./DragHandle";
-import { type DragKind, resolveDrop } from "./drop";
+import { type DragKind, finalSpaceMove, previewSpaceMove, resolveLevelDrop } from "./drop";
 import { LevelSection } from "./LevelSection";
 import { NameInput } from "./NameInput";
 import { useCollapsed } from "./useCollapsed";
@@ -25,7 +26,8 @@ import { useLevelTree } from "./useLevelTree";
 import { useOptimisticMove } from "./useOptimisticMove";
 
 export function LevelsScreen() {
-  const { levels, commit } = useOptimisticMove(useLevelTree());
+  const tree = useLevelTree();
+  const { levels, commit, setPreview } = useOptimisticMove(tree);
   const { collapsed, toggle } = useCollapsed();
   const [adding, setAdding] = useState(false);
   const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
@@ -38,12 +40,33 @@ export function LevelsScreen() {
     (item) => item.id === active?.id,
   )?.name;
 
-  function onDragEnd({ active: dragged, over }: DragEndEvent) {
+  // Whether the carried item sits below the middle of what it hovers.
+  function isBelow({ active: dragged, over }: Pick<DragOverEvent, "active" | "over">): boolean {
+    const carried = dragged.rect.current.translated;
+    return !!carried && !!over && carried.top + carried.height / 2 > over.rect.top + over.rect.height / 2;
+  }
+
+  function onDragOver(event: DragOverEvent) {
+    if (active?.kind !== "space" || !event.over || !levels) return;
+    const move = previewSpaceMove(levels, String(event.active.id), String(event.over.id), isBelow(event));
+    if (move) setPreview(move);
+  }
+
+  function onDragEnd(event: DragEndEvent) {
     const kind = active?.kind;
     setActive(null);
-    const move = kind && over && levels ? resolveDrop(levels, kind, String(dragged.id), String(over.id)) : null;
+    const { over } = event;
+    const [id, overId] = [String(event.active.id), String(over?.id)];
+    const move =
+      !kind || !over || !tree || !levels
+        ? null
+        : kind === "level"
+          ? resolveLevelDrop(levels, id, overId)
+          : finalSpaceMove(tree, levels, id, overId, isBelow(event));
     if (move) commit(move);
+    else setPreview(null);
   }
+
   const addRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,12 +82,16 @@ export function LevelsScreen() {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={collideWithSameKind}
+        collisionDetection={collideForKind}
         onDragStart={({ active: dragged }) =>
           setActive({ id: String(dragged.id), kind: dragged.data.current?.kind as DragKind })
         }
+        onDragOver={onDragOver}
         onDragEnd={onDragEnd}
-        onDragCancel={() => setActive(null)}
+        onDragCancel={() => {
+          setActive(null);
+          setPreview(null);
+        }}
       >
         <main className="flex-1 space-y-3 px-3 pt-3 pb-28">
           {levels === undefined ? null : levels.length === 0 && !adding ? (
@@ -82,6 +109,7 @@ export function LevelsScreen() {
                   level={level}
                   // While a level is carried every level folds, so the list is short enough to drag through.
                   collapsed={draggingLevel || collapsed.has(level.id)}
+                  draggingSpace={active?.kind === "space"}
                   onToggle={() => toggle(level.id)}
                 />
               ))}

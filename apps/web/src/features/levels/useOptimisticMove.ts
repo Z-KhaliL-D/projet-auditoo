@@ -9,10 +9,14 @@ type Pending = { move: Move; token: number; settled: boolean };
 
 const GIVE_UP_MS = 500;
 
-// Dexie delivers the new order a moment after the drop. Until it does, the dropped
-// order is shown so the row does not snap back for a frame. If the write turns out to
-// change nothing, the override is dropped shortly after the write finishes.
+const sameMove = (a: Move | null, b: Move | null) => JSON.stringify(a) === JSON.stringify(b);
+
+// Two layers on top of the stored data. `preview` follows a drag in progress, so a space
+// shows up in the level it hovers. `pending` holds the dropped order until Dexie delivers
+// it a moment later, so the row does not snap back for a frame. If the write turns out to
+// change nothing, `pending` is dropped shortly after the write finishes.
 export function useOptimisticMove(levels: LevelWithSpaces[] | undefined) {
+  const [preview, setPreviewState] = useState<Move | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const counter = useRef(0);
 
@@ -27,13 +31,18 @@ export function useOptimisticMove(levels: LevelWithSpaces[] | undefined) {
     return () => clearTimeout(timer);
   }, [levels, pending]);
 
-  const shown = useMemo(
-    () => (levels && pending ? applyMove(levels, pending.move) : levels),
-    [levels, pending],
-  );
+  const shown = useMemo(() => {
+    const move = preview ?? pending?.move;
+    return levels && move ? applyMove(levels, move) : levels;
+  }, [levels, preview, pending]);
+
+  function setPreview(move: Move | null) {
+    setPreviewState((current) => (sameMove(current, move) ? current : move));
+  }
 
   function commit(move: Move) {
     const token = ++counter.current;
+    setPreviewState(null);
     setPending({ move, token, settled: false });
     const write = move.kind === "level" ? moveLevel(db, move.id, move.index) : moveSpace(db, move.id, move.levelId, move.index);
     void write.finally(() =>
@@ -41,5 +50,5 @@ export function useOptimisticMove(levels: LevelWithSpaces[] | undefined) {
     );
   }
 
-  return { levels: shown, commit };
+  return { levels: shown, commit, setPreview };
 }

@@ -13,22 +13,23 @@ import { RowMenu } from "./RowMenu";
 import { SpaceRow } from "./SpaceRow";
 import type { LevelWithSpaces } from "./useLevelTree";
 
-type Props = { level: LevelWithSpaces; collapsed: boolean; onToggle: () => void };
+type Props = { level: LevelWithSpaces; collapsed: boolean; draggingSpace: boolean; onToggle: () => void };
 
-export function LevelSection({ level, collapsed, onToggle }: Props) {
+export function LevelSection({ level, collapsed, draggingSpace, onToggle }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [adding, setAdding] = useState(false);
   const count = level.spaces.length;
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id: level.id,
-    data: { kind: "level" },
-  });
+  // A level with no visible spaces has no row to drop onto, so it becomes the drop target itself.
+  const acceptsSpaces = collapsed || count === 0;
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } =
+    useSortable({ id: level.id, data: { kind: "level", acceptsSpaces } });
+  const dropTarget = draggingSpace && acceptsSpaces && isOver;
 
   return (
     <section
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`overflow-hidden rounded-xl border bg-card ${isDragging ? "opacity-40" : ""}`}
+      className={`overflow-hidden rounded-xl border bg-card ${isDragging ? "opacity-40" : ""} ${dropTarget ? "ring-2 ring-primary" : ""}`}
     >
       <div className="flex min-h-14 items-center gap-1 pl-1">
         <DragHandle ref={setActivatorNodeRef} label={level.name} {...attributes} {...listeners} />

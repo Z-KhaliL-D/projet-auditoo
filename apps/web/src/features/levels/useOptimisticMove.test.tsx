@@ -111,4 +111,52 @@ describe("useOptimisticMove", () => {
     expect(moveLevel).toHaveBeenCalledWith(expect.anything(), "L1", 1);
     expect(moveSpace).not.toHaveBeenCalled();
   });
+
+  describe("preview while dragging", () => {
+    const two = (): LevelWithSpaces[] => [
+      { id: "L1", name: "L1", rank: "a", updatedAt: 1, deletedAt: null, spaces: [space("a"), space("b")] },
+      { id: "L2", name: "L2", rank: "b", updatedAt: 1, deletedAt: null, spaces: [space("x")] },
+    ];
+    const cross: Move = { kind: "space", id: "a", levelId: "L2", index: 1 };
+    const orders = (levels: LevelWithSpaces[] | undefined) => levels?.map((l) => l.spaces.map((s) => s.id));
+
+    it("shows the space in the hovered level without writing anything", () => {
+      const { result } = renderHook(({ d }) => useOptimisticMove(d), { initialProps: { d: two() } });
+
+      act(() => result.current.setPreview(cross));
+
+      expect(orders(result.current.levels)).toEqual([["b"], ["x", "a"]]);
+      expect(moveSpace).not.toHaveBeenCalled();
+    });
+
+    it("goes back to the stored data when the preview is cleared", () => {
+      const data = two();
+      const { result } = renderHook(({ d }) => useOptimisticMove(d), { initialProps: { d: data } });
+      act(() => result.current.setPreview(cross));
+
+      act(() => result.current.setPreview(null));
+
+      expect(result.current.levels).toBe(data);
+    });
+
+    it("keeps the same data object when the same preview is set again", () => {
+      const { result } = renderHook(({ d }) => useOptimisticMove(d), { initialProps: { d: two() } });
+      act(() => result.current.setPreview(cross));
+      const shown = result.current.levels;
+
+      act(() => result.current.setPreview({ ...cross }));
+
+      expect(result.current.levels).toBe(shown);
+    });
+
+    it("turns the preview into the written move on commit, without a flash in between", async () => {
+      const { result } = renderHook(({ d }) => useOptimisticMove(d), { initialProps: { d: two() } });
+      act(() => result.current.setPreview(cross));
+
+      await act(async () => result.current.commit(cross));
+
+      expect(orders(result.current.levels)).toEqual([["b"], ["x", "a"]]);
+      expect(moveSpace).toHaveBeenCalledWith(expect.anything(), "a", "L2", 1);
+    });
+  });
 });
