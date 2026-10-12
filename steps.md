@@ -156,3 +156,17 @@ Log of each step: what was built, how it was verified, and the commit.
   - 149 Vitest tests pass in `apps/web`: preview and final moves above, below, into empty and folded levels, out and back, collision candidates, the hook's preview and commit, and an integration test where a moved space arrives in the other level on a second device.
   - `tsc --noEmit` and `vite build` pass.
   - Not yet checked by hand on a phone: how the preview feels while crossing levels, the layout shift when the source level shrinks, folded-level drops, and edge auto-scroll with long lists.
+
+## Step 7d: Stable layout while dragging
+
+- Commit: `fix(web): keep layout stable while dragging`
+- Why: two known shifts. Folding every level at the start of a level drag shortened the page under the finger, and a space leaving its level shrank it while the finger was down, so the held item or the gap could jump or land one row off.
+- Built:
+  - `MeasuringStrategy.Always`: droppables are re-measured throughout the drag, so the sorting math never uses stale rects.
+  - Space drags: the old level keeps an empty row (a ghost) of the same height at the same index while the space is previewed elsewhere, so nothing at or above the finger moves. It disappears on release or when the space comes back.
+  - Level drags: the page keeps its length with temporary bottom padding, and scrolls by however far the carried level moved, on fold and again on unfold, so it stays where it was on screen.
+  - `DragOverlay` has no drop animation, since it would aim at a position measured before the layout settles.
+- Verified:
+  - 162 Vitest tests pass in `apps/web`: ghost derivation, the ghost row in a level, the scroll and padding math, and the anchor hook against stubbed geometry (jsdom has no layout).
+  - `tsc --noEmit` and `vite build` pass.
+  - Not yet checked by hand on a phone: how the fold feels at the start of a level drag, and the gap position when crossing levels. When the carried level is near the top of a short list the page cannot scroll further up, so it can still end up a little above the finger.

@@ -8,14 +8,21 @@ import { renameLevel } from "@/data/levels";
 import { createSpace } from "@/data/spaces";
 import { deleteLevelWithUndo } from "./deleteWithUndo";
 import { DragHandle } from "./DragHandle";
+import type { Ghost } from "./drop";
 import { NameInput } from "./NameInput";
 import { RowMenu } from "./RowMenu";
 import { SpaceRow } from "./SpaceRow";
 import type { LevelWithSpaces } from "./useLevelTree";
 
-type Props = { level: LevelWithSpaces; collapsed: boolean; draggingSpace: boolean; onToggle: () => void };
+type Props = {
+  level: LevelWithSpaces;
+  collapsed: boolean;
+  draggingSpace: boolean;
+  ghost: Ghost | null;
+  onToggle: () => void;
+};
 
-export function LevelSection({ level, collapsed, draggingSpace, onToggle }: Props) {
+export function LevelSection({ level, collapsed, draggingSpace, ghost, onToggle }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [adding, setAdding] = useState(false);
   const count = level.spaces.length;
@@ -24,10 +31,13 @@ export function LevelSection({ level, collapsed, draggingSpace, onToggle }: Prop
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } =
     useSortable({ id: level.id, data: { kind: "level", acceptsSpaces } });
   const dropTarget = draggingSpace && acceptsSpaces && isOver;
+  const rows = level.spaces.map((space) => <SpaceRow key={space.id} space={space} />);
+  if (ghost) rows.splice(Math.min(ghost.index, rows.length), 0, <li key="ghost" aria-hidden style={{ height: ghost.height }} />);
 
   return (
     <section
       ref={setNodeRef}
+      data-level-id={level.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={`overflow-hidden rounded-xl border bg-card ${isDragging ? "opacity-40" : ""} ${dropTarget ? "ring-2 ring-primary" : ""}`}
     >
@@ -69,15 +79,11 @@ export function LevelSection({ level, collapsed, draggingSpace, onToggle }: Prop
 
       {!collapsed && (
         <div>
-          {count === 0 && !adding && (
+          {count === 0 && !adding && !ghost && (
             <p className="border-t px-4 py-3 text-sm text-muted-foreground">No spaces yet</p>
           )}
           <SortableContext items={level.spaces.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-            <ul>
-              {level.spaces.map((space) => (
-                <SpaceRow key={space.id} space={space} />
-              ))}
-            </ul>
+            <ul>{rows}</ul>
           </SortableContext>
           <div className="border-t">
             {adding ? (

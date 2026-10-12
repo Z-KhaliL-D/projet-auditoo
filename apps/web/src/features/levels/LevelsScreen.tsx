@@ -4,6 +4,7 @@ import {
   type DragOverEvent,
   DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
   useSensor,
   useSensors,
@@ -18,10 +19,11 @@ import { createLevel } from "@/data/levels";
 import { SyncBadge } from "@/sync/SyncBadge";
 import { collideForKind } from "./collision";
 import { DragPreview } from "./DragHandle";
-import { type DragKind, finalSpaceMove, previewSpaceMove, resolveLevelDrop } from "./drop";
+import { type DragKind, finalSpaceMove, ghostFor, previewSpaceMove, resolveLevelDrop } from "./drop";
 import { LevelSection } from "./LevelSection";
 import { NameInput } from "./NameInput";
 import { useCollapsed } from "./useCollapsed";
+import { useFoldAnchor } from "./useFoldAnchor";
 import { useLevelTree } from "./useLevelTree";
 import { useOptimisticMove } from "./useOptimisticMove";
 
@@ -30,12 +32,15 @@ export function LevelsScreen() {
   const { levels, commit, setPreview } = useOptimisticMove(tree);
   const { collapsed, toggle } = useCollapsed();
   const [adding, setAdding] = useState(false);
-  const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
+  const [active, setActive] = useState<{ id: string; kind: DragKind; height: number } | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const draggingLevel = active?.kind === "level";
+  const captureAnchor = useFoldAnchor(draggingLevel, mainRef);
+  const ghost = active?.kind === "space" && tree && levels ? ghostFor(tree, levels, active.id, active.height) : null;
   const activeName = (active?.kind === "level" ? levels : levels?.flatMap((l) => l.spaces))?.find(
     (item) => item.id === active?.id,
   )?.name;
@@ -54,6 +59,7 @@ export function LevelsScreen() {
 
   function onDragEnd(event: DragEndEvent) {
     const kind = active?.kind;
+    if (kind === "level") captureAnchor(String(event.active.id));
     setActive(null);
     const { over } = event;
     const [id, overId] = [String(event.active.id), String(over?.id)];
@@ -83,17 +89,22 @@ export function LevelsScreen() {
       <DndContext
         sensors={sensors}
         collisionDetection={collideForKind}
-        onDragStart={({ active: dragged }) =>
-          setActive({ id: String(dragged.id), kind: dragged.data.current?.kind as DragKind })
-        }
+        // Droppables are re-measured throughout the drag, because levels fold and shrink while it runs.
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={({ active: dragged }) => {
+          const kind = dragged.data.current?.kind as DragKind;
+          if (kind === "level") captureAnchor(String(dragged.id));
+          setActive({ id: String(dragged.id), kind, height: dragged.rect.current.initial?.height ?? 0 });
+        }}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
-        onDragCancel={() => {
+        onDragCancel={({ active: dragged }) => {
+          if (dragged.data.current?.kind === "level") captureAnchor(String(dragged.id));
           setActive(null);
           setPreview(null);
         }}
       >
-        <main className="flex-1 space-y-3 px-3 pt-3 pb-28">
+        <main ref={mainRef} className="flex-1 space-y-3 px-3 pt-3 pb-28">
           {levels === undefined ? null : levels.length === 0 && !adding ? (
             <div className="px-4 py-16 text-center">
               <p className="text-base font-medium">No levels yet</p>
@@ -110,6 +121,7 @@ export function LevelsScreen() {
                   // While a level is carried every level folds, so the list is short enough to drag through.
                   collapsed={draggingLevel || collapsed.has(level.id)}
                   draggingSpace={active?.kind === "space"}
+                  ghost={ghost?.levelId === level.id ? ghost : null}
                   onToggle={() => toggle(level.id)}
                 />
               ))}
@@ -127,7 +139,8 @@ export function LevelsScreen() {
             </div>
           )}
         </main>
-        <DragOverlay>{activeName ? <DragPreview name={activeName} bold={draggingLevel} /> : null}</DragOverlay>
+        {/* No drop animation: it would aim at a position measured before the layout settles. */}
+        <DragOverlay dropAnimation={null}>{activeName ? <DragPreview name={activeName} bold={draggingLevel} /> : null}</DragOverlay>
       </DndContext>
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">

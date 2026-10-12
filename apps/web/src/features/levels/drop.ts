@@ -73,6 +73,23 @@ export function finalSpaceMove(
   return { kind: "space", id: activeId, ...target };
 }
 
+export type Ghost = { levelId: string; index: number; height: number };
+
+// While a carried space is previewed in another level, its old level keeps an empty row
+// of the same height at the same spot. Nothing at or above the finger then moves when the
+// space leaves, so the gap cannot land a row off. It disappears on release.
+export function ghostFor(
+  tree: LevelWithSpaces[],
+  shown: LevelWithSpaces[],
+  activeId: string,
+  height: number,
+): Ghost | null {
+  const original = locateSpace(tree, activeId);
+  const current = locateSpace(shown, activeId);
+  if (!original || !current || original.levelId === current.levelId) return null;
+  return { levelId: original.levelId, index: original.index, height };
+}
+
 export function applyMove(levels: LevelWithSpaces[], move: Move): LevelWithSpaces[] {
   return move.kind === "level" ? applyLevelMove(levels, move) : applySpaceMove(levels, move);
 }

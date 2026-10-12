@@ -1,6 +1,6 @@
 import type { Level, Space } from "@auditoo/shared";
 import { describe, expect, it } from "vitest";
-import { type Move, applyMove, finalSpaceMove, previewSpaceMove, reflects, resolveLevelDrop } from "./drop";
+import { type Move, applyMove, finalSpaceMove, ghostFor, previewSpaceMove, reflects, resolveLevelDrop } from "./drop";
 import type { LevelWithSpaces } from "./useLevelTree";
 
 const space = (id: string, levelId: string): Space => ({
@@ -170,5 +170,28 @@ describe("level moves", () => {
     const move: Move = { kind: "level", id: "L1", index: 2 };
     expect(reflects(tree(), move)).toBe(false);
     expect(reflects(applyMove(tree(), move), move)).toBe(true);
+  });
+});
+
+describe("ghostFor", () => {
+  it("is null while the space is still in its original level", () => {
+    expect(ghostFor(tree(), tree(), "b", 45)).toBeNull();
+  });
+
+  it("keeps an empty row at the original index once the space is previewed elsewhere", () => {
+    const stored = tree();
+    const shown = applyMove(stored, { kind: "space", id: "b", levelId: "L2", index: 1 });
+    expect(ghostFor(stored, shown, "b", 45)).toEqual({ levelId: "L1", index: 1, height: 45 });
+  });
+
+  it("disappears when the space is previewed back into its original level", () => {
+    const stored = tree();
+    const away = applyMove(stored, { kind: "space", id: "b", levelId: "L2", index: 0 });
+    const back = applyMove(away, { kind: "space", id: "b", levelId: "L1", index: 2 });
+    expect(ghostFor(stored, back, "b", 45)).toBeNull();
+  });
+
+  it("is null for a space that does not exist", () => {
+    expect(ghostFor(tree(), tree(), "gone", 45)).toBeNull();
   });
 });
