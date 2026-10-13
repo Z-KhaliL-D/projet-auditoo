@@ -275,7 +275,7 @@ Mobile-first, teal accent on a neutral palette, dark mode follows the system.
 
 ## 13. How AI was used
 
-Built with Claude Code. `CLAUDE.md` holds the stack, the architecture rules and a decision protocol: before each step, the agent lists the decisions with options and a recommendation, and waits for my choice. Every decision is logged in `DECISIONS.md`, and `steps.md` logs each step and the deferred items.
+Built with Claude Code. `CLAUDE.md` holds the stack, the architecture rules and a decision protocol: before each step, the agent lists the decisions with options and a recommendation, and waits for my choice. Every decision is logged in `DECISIONS.md`.
 
 Where I corrected the agent:
 - It proposed a private repository and an authentication step. The brief asks for a public repository and a link testable without an account.
